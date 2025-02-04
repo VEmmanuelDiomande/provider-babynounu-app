@@ -48,6 +48,8 @@
   <div v-show="show" class="text-xl">
     <p>Votre paiement est confirmé ! Merci pour votre confiance babynounu.</p>
   </div>
+
+  <a href="intent://home#Intent;scheme=com.babynounu.starter;package=com.babynounu.starter;end;">Open App</a>
 </template>
 
 <style>
@@ -76,9 +78,9 @@ const route = useRoute()
 const MODE: any = 'production' // 'development' ou 'production'
 const URL_HOST = MODE === 'development' ? 'http://localhost:3000' : 'https://api.babynounu.com'
 
-onMounted(async () => {
+onMounted(async () => { 
   await axios
-    .post(URL_HOST + '/abonnements/confirm', {
+    .post(URL_HOST + '/abonnements/comfirm', {
       userId: route.query.userId,
       transactionId: route.query.transactionId,
     })
