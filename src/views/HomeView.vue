@@ -18,8 +18,8 @@
           <p class="text-sm font-medium text-gray-900">Abonnement confirmé !</p>
           <p class="mt-1 text-xs text-gray-600">Votre abonnement a été activé avec succès.</p>
         </div>
-        <button 
-          @click="closeNotification" 
+        <button
+          @click="closeNotification"
           class="text-gray-400 hover:text-gray-500"
           aria-label="Fermer la notification"
         >
@@ -46,8 +46,8 @@
           <p class="text-sm font-medium text-gray-900">Erreur d'abonnement</p>
           <p class="mt-1 text-xs text-gray-600">{{ errorMessage }}</p>
         </div>
-        <button 
-          @click="closeNotification" 
+        <button
+          @click="closeNotification"
           class="text-gray-400 hover:text-gray-500"
           aria-label="Fermer la notification"
         >
@@ -62,7 +62,9 @@
         <template v-if="isLoading">
           <div class="flex justify-center mb-4">
             <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-              <div class="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              <div
+                class="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"
+              ></div>
             </div>
           </div>
           <div class="text-center space-y-3">
@@ -90,7 +92,9 @@
               >
                 <span v-if="!isOpeningApp">Ouvrir l'application</span>
                 <span v-else class="flex items-center justify-center">
-                  <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+                  <span
+                    class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"
+                  ></span>
                   Ouverture...
                 </span>
               </button>
@@ -125,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
@@ -138,18 +142,17 @@ const linkOpenApp = ref('')
 const isOpeningApp = ref(false)
 const isLoading = ref(true)
 const subscriptionValid = ref(false)
-const isMobile = ref(
-  /android|iPad|iPhone|iPod/i.test(navigator.userAgent || navigator.vendor)
-)
+const isMobile = ref(/android|iPad|iPhone|iPod/i.test(navigator.userAgent || navigator.vendor))
 
 // API configuration
-const API_URL = import.meta.env.MODE != 'development' 
-  ? 'http://localhost:3000' 
-  : 'https://api.babynounu.com'
 
-  const BASE_URL = import.meta.env.MODE === 'development'
-  ? 'http://localhost:8081'
-  : 'https://provider.babynounu.com'
+const API_URL =
+  import.meta.env.MODE === 'development' ? 'http://localhost:3000' : 'https://api.babynounu.com'
+
+const BASE_URL =
+  import.meta.env.MODE === 'development'
+    ? 'http://localhost:8081'
+    : 'https://provider.babynounu.com'
 
 interface ApiResponse {
   isPayment: boolean
@@ -157,19 +160,53 @@ interface ApiResponse {
   error?: string
 }
 
-// Lifecycle hook
-onMounted(async () => {
+const Payment = reactive({
+  transactionId: '',
+})
+
+const GetNotyfication = async () => {
+  const GetPayment = await fetch(
+    `${API_URL}/user/:userId/transaction/:transactionId`
+      .replace(':userId', route.query.userId as string)
+      .replace(':transactionId', route.query.transactionId as string),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: route.query.userId,
+        transaction_id: route.query.transactionId,
+      }),
+    },
+  )
+
+  const data = await GetPayment.json()
+
+  if (data) {
+    const GetNotyficationByCinetPay = await fetch(`${BASE_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: data.payment_token,
+        transaction_id: data.transactionId,
+      }),
+    })
+
+    const PaymentToReturn = await GetNotyficationByCinetPay.json()
+    if (PaymentToReturn) {
+      Payment.transactionId = PaymentToReturn.transactionId
+    }
+  }
+}
+
+const CheckSubscription = async () => {
   try {
-    localStorage.clear()
-    localStorage.setItem('userId', route.query.userId as string)
-    localStorage.setItem('transactionId', route.query.transactionId as string)
     const response = await fetch(`${API_URL}/abonnements/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: route.query.userId,
-        transactionId: route.query.transactionId,
-      })
+        transactionId: Payment.transactionId,
+      }),
     })
 
     if (!response.ok) {
@@ -177,7 +214,7 @@ onMounted(async () => {
     }
 
     const data: ApiResponse = await response.json()
-    
+
     if (data?.isPayment && data?.hasActiveSubscription) {
       subscriptionValid.value = true
       showSuccessNotification.value = true
@@ -188,11 +225,20 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error('Erreur lors de la confirmation:', error)
-    errorMessage.value = "Une erreur est survenue lors de la validation de votre abonnement."
+    errorMessage.value = 'Une erreur est survenue lors de la validation de votre abonnement.'
     showErrorNotification.value = true
   } finally {
     isLoading.value = false
   }
+}
+
+// Lifecycle hook
+onMounted(() => {
+  GetNotyfication()
+  localStorage.clear()
+  localStorage.setItem('userId', route.query.userId as string)
+  // localStorage.setItem('transactionId', route.query.transactionId as string)
+  CheckSubscription()
 })
 
 // Methods
@@ -207,10 +253,10 @@ const openBabyNounuApp = async (): Promise<void> => {
     linkOpenApp.value = /android/i.test(userAgent)
       ? 'intent://home#Intent;scheme=com.babyNounu.starter;package=com.babyNounu.starter;end;'
       : 'com.babyNounu.starter://home'
-    
-    await new Promise(resolve => setTimeout(resolve, 300))
+
+    await new Promise((resolve) => setTimeout(resolve, 300))
     linkElement.click()
-    
+
     setTimeout(() => {
       isOpeningApp.value = false
     }, 2000)
@@ -237,15 +283,15 @@ const retryPayment = (): void => {
 </script>
 
 <style>
-*{
-  font-family: "Figtree"
+* {
+  font-family: 'Figtree';
 }
 .animate-spin {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
-
-
 </style>
