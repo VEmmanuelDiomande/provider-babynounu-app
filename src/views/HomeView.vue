@@ -183,7 +183,7 @@ const GetNotyfication = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: data.payment_token,
-        transaction_id: data.transactionId,
+        transaction_id: data.transaction_id,
       }),
     })
 
@@ -203,7 +203,7 @@ const CheckSubscription = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: route.query.userId,
-        transactionId: Payment.transactionId,
+        transactionId: route.query.transactionId,
       }),
     })
 
