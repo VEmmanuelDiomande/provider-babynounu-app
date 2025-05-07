@@ -192,7 +192,9 @@ const GetNotyfication = async () => {
     })
 
     const PaymentToReturn = await GetNotyficationByCinetPay.json()
+    console.log(PaymentToReturn)
     if (PaymentToReturn) {
+      console.log(PaymentToReturn)
       Payment.transactionId = PaymentToReturn.transactionId
     }
   }
