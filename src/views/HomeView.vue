@@ -166,7 +166,7 @@ const Payment = reactive({
 
 const GetNotyfication = async () => {
   const GetPayment = await fetch(
-    `${API_URL}/user/:userId/transaction/:transactionId`
+    `${API_URL}/payments/user/:userId/transaction/:transactionId`
       .replace(':userId', route.query.userId as string)
       .replace(':transactionId', route.query.transactionId as string),
     {
