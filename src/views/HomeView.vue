@@ -170,12 +170,8 @@ const GetNotyfication = async () => {
       .replace(':userId', route.query.userId as string)
       .replace(':transactionId', route.query.transactionId as string),
     {
-      method: 'POST',
+      method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: route.query.userId,
-        transaction_id: route.query.transactionId,
-      }),
     },
   )
 
@@ -183,7 +179,7 @@ const GetNotyfication = async () => {
 
   if (data) {
     const GetNotyficationByCinetPay = await fetch(`${BASE_URL}`, {
-      method: 'GET',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: data.payment_token,
@@ -202,7 +198,7 @@ const GetNotyfication = async () => {
 
 const CheckSubscription = async () => {
   try {
-    const response = await fetch(`${API_URL}/abonnements/confirm`, {
+    const response = await fetch(`${API_URL}/abonnements/comfirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
