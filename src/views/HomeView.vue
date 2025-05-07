@@ -232,11 +232,13 @@ const CheckSubscription = async () => {
 
 // Lifecycle hook
 onMounted(() => {
-  GetNotyfication()
+  GetNotyfication().finally(() => {
+    CheckSubscription()
+  })
   localStorage.clear()
   localStorage.setItem('userId', route.query.userId as string)
   // localStorage.setItem('transactionId', route.query.transactionId as string)
-  CheckSubscription()
+  
 })
 
 // Methods
