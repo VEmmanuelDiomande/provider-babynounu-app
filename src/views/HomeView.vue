@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
@@ -145,7 +145,6 @@ const subscriptionValid = ref(false)
 const isMobile = ref(/android|iPad|iPhone|iPod/i.test(navigator.userAgent || navigator.vendor))
 
 // API configuration
-
 const API_URL =
   import.meta.env.MODE === 'development' ? 'http://localhost:3000' : 'https://api.babynounu.com'
 
@@ -160,50 +159,56 @@ interface ApiResponse {
   error?: string
 }
 
-const Payment = reactive({
-  transactionId: '',
-})
+// Lifecycle hook
+onMounted(async () => {
+  try {
+    localStorage.clear()
+    localStorage.setItem('userId', route.query.userId as string)
+    localStorage.setItem('transactionId', route.query.transactionId as string)
 
-const GetNotyfication = async () => {
-  const GetPayment = await fetch(
-    `${API_URL}/payments/user/:userId/transaction/:transactionId`
-      .replace(':userId', route.query.userId as string)
-      .replace(':transactionId', route.query.transactionId as string),
-    {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    },
-  )
+    // Get the payment status
+    const paymentGetResponse = await fetch(
+      `${API_URL}/payments/user/:userId/transaction/:transactionId`
+        .replace(':userId', route.query.userId as string)
+        .replace(':transactionId', route.query.transactionId as string),
+      {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      },
+    )
 
-  const data = await GetPayment.json()
+    if (!paymentGetResponse.ok) {
+      throw new Error(`Erreur HTTP! statut: ${paymentGetResponse.status}`)
+    }
 
-  if (data) {
-    const GetNotyficationByCinetPay = await fetch(`${BASE_URL}`, {
+    const paymentData: any = await paymentGetResponse.json()
+
+    // Notiy Payment status
+    const NotifyPaymentResponse = await fetch(`${API_URL}/payments/notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        token: data.payment_token,
-        transaction_id: data.transaction_id,
+        token: paymentData.payment_token,
+        transaction_id: route.query.transactionId,
       }),
     })
 
-    const PaymentToReturn = await GetNotyficationByCinetPay.json()
-    console.log(PaymentToReturn)
-    if (PaymentToReturn) {
-      console.log(PaymentToReturn)
-      Payment.transactionId = PaymentToReturn.transactionId
+    if (!NotifyPaymentResponse.ok) {
+      throw new Error(`Erreur HTTP! statut: ${NotifyPaymentResponse.status}`)
     }
-  }
-}
 
-const CheckSubscription = async () => {
-  try {
-    const response = await fetch(`${API_URL}/abonnements/comfirm`, {
+    const NotifyPaymentData: any = await NotifyPaymentResponse.json()
+
+    console.log(NotifyPaymentData)
+    // Confirm the subscription
+
+    const response = await fetch(`${API_URL}/abonnements/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: route.query.userId,
         transactionId: route.query.transactionId,
+        transactionIdByNotify: NotifyPaymentData.cpm_trans_id,
       }),
     })
 
@@ -228,17 +233,6 @@ const CheckSubscription = async () => {
   } finally {
     isLoading.value = false
   }
-}
-
-// Lifecycle hook
-onMounted(() => {
-  GetNotyfication().finally(() => {
-    CheckSubscription()
-  })
-  localStorage.clear()
-  localStorage.setItem('userId', route.query.userId as string)
-  // localStorage.setItem('transactionId', route.query.transactionId as string)
-  
 })
 
 // Methods
