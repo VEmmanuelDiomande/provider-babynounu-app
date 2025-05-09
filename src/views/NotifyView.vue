@@ -29,7 +29,7 @@ onMounted(async () => {
   }
 
   const data: any = await response.json()
-
+  console.log(data)
   if (data?.isPayment && data?.hasActiveSubscription) {
     window.location.href = '/abonnement/valide'
   } else {

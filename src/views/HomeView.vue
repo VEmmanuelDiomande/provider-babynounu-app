@@ -183,23 +183,7 @@ onMounted(async () => {
 
     const paymentData: any = await paymentGetResponse.json()
 
-    // Notiy Payment status
-    const NotifyPaymentResponse = await fetch(`${API_URL}/payments/notify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: paymentData.payment_token,
-        transaction_id: route.query.transactionId,
-      }),
-    })
-
-    if (!NotifyPaymentResponse.ok) {
-      throw new Error(`Erreur HTTP! statut: ${NotifyPaymentResponse.status}`)
-    }
-
-    const NotifyPaymentData: any = await NotifyPaymentResponse.json()
-
-    console.log(NotifyPaymentData)
+  
     // Confirm the subscription
 
     const response = await fetch(`${API_URL}/abonnements/confirm`, {
@@ -208,7 +192,6 @@ onMounted(async () => {
       body: JSON.stringify({
         userId: route.query.userId,
         transactionId: route.query.transactionId,
-        transactionIdByNotify: NotifyPaymentData.cpm_trans_id,
       }),
     })
 
