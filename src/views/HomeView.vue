@@ -186,7 +186,7 @@ onMounted(async () => {
   
     // Confirm the subscription
 
-    const response = await fetch(`${API_URL}/abonnements/confirm`, {
+    const response = await fetch(`${API_URL}/abonnements/comfirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
