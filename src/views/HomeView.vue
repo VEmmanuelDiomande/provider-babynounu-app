@@ -186,7 +186,7 @@ onMounted(async () => {
   
     // Confirm the subscription
 
-    const response = await fetch(`${API_URL}/abonnements/comfirm`, {
+    const response = await fetch(`${API_URL}/abonnements/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -227,16 +227,34 @@ const openBabyNounuApp = async (): Promise<void> => {
 
   if (linkElement) {
     isOpeningApp.value = true
-    linkOpenApp.value = /android/i.test(userAgent)
-      ? 'intent://home#Intent;scheme=com.babyNounu.starter;package=com.babyNounu.starter;end;'
-      : 'com.babyNounu.starter://home'
+    
+    if (/android/i.test(userAgent)) {
+      // Essayer d'ouvrir l'app Android avec intent
+      linkOpenApp.value = 'intent://home#Intent;scheme=babynounu;package=com.babyNounu.starter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.babyNounu.starter;end;'
+    } else if (/iPad|iPhone|iPod/i.test(userAgent)) {
+      // Essayer d'ouvrir l'app iOS avec custom scheme
+      linkOpenApp.value = 'babynounu://home'
+    } else {
+      // Fallback pour autres plateformes
+      linkOpenApp.value = 'https://play.google.com/store/apps/details?id=com.babyNounu.starter'
+    }
 
     await new Promise((resolve) => setTimeout(resolve, 300))
     linkElement.click()
 
+    // Fallback vers le store si l'app ne s'ouvre pas
+    setTimeout(() => {
+      if (/android/i.test(userAgent)) {
+        window.location.href = 'https://play.google.com/store/apps/details?id=com.babyNounu.starter'
+      } else if (/iPad|iPhone|iPod/i.test(userAgent)) {
+        // Rediriger vers l'App Store iOS si disponible
+        window.location.href = 'https://apps.apple.com/app/babynounu'
+      }
+    }, 3000)
+
     setTimeout(() => {
       isOpeningApp.value = false
-    }, 2000)
+    }, 4000)
   }
 }
 
@@ -244,7 +262,8 @@ const tryOpenAppAgain = async () => {
   if (isMobile.value) {
     await openBabyNounuApp()
   } else {
-    alert("Veuillez ouvrir l'application depuis votre appareil mobile")
+    // Rediriger vers le Play Store pour les utilisateurs desktop
+    window.open('https://play.google.com/store/apps/details?id=com.babyNounu.starter', '_blank')
   }
 }
 
