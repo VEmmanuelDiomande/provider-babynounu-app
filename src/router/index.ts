@@ -10,6 +10,11 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/payment/return',
+      name: 'payment-return',
+      redirect: (to) => ({ path: '/', query: to.query }),
+    },
+    {
       path: '/notify',
       redirect: '/',
     },

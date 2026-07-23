@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client'
 
 const SOCKET_URL =
-  import.meta.env.MODE === 'development' ? 'http://localhost:3000' : 'https://api.babynounu.com'
+  import.meta.env.MODE === 'development' ? 'http://localhost:3000' : 'https://baby.djoumaf.net'
 
 export interface PaymentStatusPayload {
   transactionId: string

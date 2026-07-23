@@ -1,338 +1,102 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-    <!-- Notification de succès -->
-    <transition
-      enter-active-class="transform ease-out duration-200 transition"
-      leave-active-class="transition ease-in duration-150"
-      appear
-    >
-      <div
-        v-if="showSuccessNotification"
-        class="fixed top-3 inset-x-3 mx-auto max-w-md p-4 bg-white rounded-xl shadow-lg ring-1 ring-green-500/10 z-50 flex items-start"
-        role="alert"
-      >
-        <div class="flex-shrink-0 h-5 w-5 text-green-500 mt-0.5">
-          <CheckCircleIcon />
+  <div class="relative min-h-screen flex flex-col items-center justify-center p-6 pt-safe pb-safe">
+    <BackgroundDecor />
+
+    <!-- Toast notifications -->
+    <ToastNotification
+      v-if="showNotification && notificationType === 'success'"
+      type="success"
+      title="Abonnement confirmé !"
+      message="Votre abonnement a été activé avec succès."
+      @close="closeNotification"
+    />
+    <ToastNotification
+      v-if="showNotification && notificationType === 'error'"
+      type="error"
+      title="Erreur de paiement"
+      :message="errorMessage"
+      @close="closeNotification"
+    />
+
+    <!-- Main card -->
+    <div class="w-full max-w-sm animate-slide-up">
+      <!-- Card body: animated gradient border + glassmorphism -->
+      <div class="relative">
+        <!-- glow behind card -->
+        <div class="absolute -inset-3 bg-gradient-to-br from-primary/20 via-secondary/12 to-indigos/10 rounded-[2.5rem] blur-3xl opacity-80 animate-breathe" style="box-shadow: none;"></div>
+
+        <div class="relative card-gradient-border backdrop-blur-2xl rounded-[2rem] shadow-2xl shadow-gray-400/25 overflow-hidden ">
+          <!-- inner sheen -->
+          <div class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/70 to-transparent pointer-events-none"></div>
+
+          <!-- Logo header inside card -->
+          <div class="relative flex flex-col items-center pt-12 pb-3 ">
+            <AppLogo size="lg" />
+            <div class="mt-5 h-px w-24 bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
+          </div>
+
+          <!-- Content -->
+          <div class="relative px-8 pb-12 pt-8 ">
+            <PaymentLoader v-if="state === 'loading'" />
+            <PaymentSuccess
+              v-else-if="state === 'success'"
+              :is-opening-app="isOpeningApp"
+              @open-app="tryOpenAppAgain"
+            />
+            <PaymentError
+              v-else
+              :message="errorMessage"
+              @retry="retryPayment"
+            />
+          </div>
         </div>
-        <div class="ml-3 flex-1">
-          <p class="text-sm font-medium text-gray-900">Abonnement confirmé !</p>
-          <p class="mt-1 text-xs text-gray-600">Votre abonnement a été activé avec succès.</p>
-        </div>
-        <button
-          @click="closeNotification"
-          class="text-gray-400 hover:text-gray-500"
-          aria-label="Fermer la notification"
-        >
-          <XMarkIcon class="h-4 w-4" />
-        </button>
       </div>
-    </transition>
 
-    <!-- Notification d'erreur -->
-    <transition
-      enter-active-class="transform ease-out duration-200 transition"
-      leave-active-class="transition ease-in duration-150"
-      appear
-    >
-      <div
-        v-if="showErrorNotification"
-        class="fixed top-3 inset-x-3 mx-auto max-w-md p-4 bg-white rounded-xl shadow-lg ring-1 ring-red-500/10 z-50 flex items-start"
-        role="alert"
-      >
-        <div class="flex-shrink-0 h-5 w-5 text-red-500 mt-0.5">
-          <ExclamationTriangleIcon />
+      <!-- Footer trust badges -->
+      <div class="mt-8 flex flex-col items-center gap-3 animate-fade-in" style="animation-delay: 0.4s; opacity: 0;">
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/70 backdrop-blur-md border border-gray-200/60 shadow-sm text-[11px] font-love font-medium text-gray-500">
+            <i class="ri ri-lock-2-line text-success" style="font-size: 13px;"></i>
+            Chiffré SSL
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/70 backdrop-blur-md border border-gray-200/60 shadow-sm text-[11px] font-love font-medium text-gray-500">
+            <i class="ri ri-shield-check-line text-primary" style="font-size: 13px;"></i>
+            Paiement sécurisé
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/70 backdrop-blur-md border border-gray-200/60 shadow-sm text-[11px] font-love font-medium text-gray-500">
+            <i class="ri ri-flashlight-line text-indigos" style="font-size: 13px;"></i>
+            Temps réel
+          </span>
         </div>
-        <div class="ml-3 flex-1">
-          <p class="text-sm font-medium text-gray-900">Erreur d'abonnement</p>
-          <p class="mt-1 text-xs text-gray-600">{{ errorMessage }}</p>
-        </div>
-        <button
-          @click="closeNotification"
-          class="text-gray-400 hover:text-gray-500"
-          aria-label="Fermer la notification"
-        >
-          <XMarkIcon class="h-4 w-4" />
-        </button>
-      </div>
-    </transition>
-
-    <!-- Carte principale -->
-    <div class="w-full max-w-sm bg-white rounded-lg shadow-sm">
-      <div class="p-6">
-        <template v-if="isLoading">
-          <div class="flex justify-center mb-4">
-            <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-              <div
-                class="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"
-              ></div>
-            </div>
-          </div>
-          <div class="text-center space-y-3">
-            <h2 class="text-xl font-bold text-gray-800">Traitement en cours</h2>
-            <p class="text-sm text-gray-600">Validation du paiement en temps réel...</p>
-            <div class="flex items-center justify-center gap-2 pt-2">
-              <span class="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span class="text-xs text-gray-500">En attente de la confirmation</span>
-            </div>
-          </div>
-        </template>
-
-        <template v-else-if="subscriptionValid">
-          <div class="flex justify-center mb-4">
-            <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-              <CheckCircleIcon class="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <div class="text-center space-y-3">
-            <h2 class="text-xl font-bold text-gray-800">Paiement confirmé !</h2>
-            <p class="text-sm text-gray-600">
-              Merci pour votre confiance <span class="font-medium text-green-600">babynounu</span>.
-            </p>
-            <div class="pt-3">
-              <button
-                @click="tryOpenAppAgain"
-                class="w-full px-4 py-2 bg-green-500 text-white font-medium rounded-lg shadow hover:bg-green-600 transition-colors duration-200"
-                :disabled="isOpeningApp"
-              >
-                <span v-if="!isOpeningApp">Ouvrir l'application</span>
-                <span v-else class="flex items-center justify-center">
-                  <span
-                    class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"
-                  ></span>
-                  Ouverture...
-                </span>
-              </button>
-            </div>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="flex justify-center mb-4">
-            <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center">
-              <ExclamationTriangleIcon class="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <div class="text-center space-y-3">
-            <h2 class="text-xl font-bold text-gray-800">Abonnement invalide</h2>
-            <p class="text-sm text-gray-600">{{ errorMessage }}</p>
-            <div class="pt-3">
-              <button
-                @click="retryPayment"
-                class="w-full px-4 py-2 bg-red-500 text-white font-medium rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-              >
-                Réessayer le paiement
-              </button>
-            </div>
-          </div>
-        </template>
+        <p class="text-[11px] text-gray-400 font-love tracking-wide">© {{ new Date().getFullYear() }} BabyNounu · Tous droits réservés</p>
       </div>
     </div>
 
-    <a :href="linkOpenApp" class="hidden" id="openApp">Open App</a>
+    <a href="#" class="hidden" id="openApp" aria-hidden="true">Open App</a>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { paymentSocketService, type PaymentStatusPayload } from '@/services/socket.services'
+import BackgroundDecor from '@/components/BackgroundDecor.vue'
+import AppLogo from '@/components/AppLogo.vue'
+import PaymentLoader from '@/components/PaymentLoader.vue'
+import PaymentSuccess from '@/components/PaymentSuccess.vue'
+import PaymentError from '@/components/PaymentError.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
+import { usePaymentValidation } from '@/composables/usePaymentValidation'
 
-// Reactive state
-const route = useRoute()
-const showSuccessNotification = ref(false)
-const showErrorNotification = ref(false)
-const errorMessage = ref('')
-const linkOpenApp = ref('')
-const isOpeningApp = ref(false)
-const isLoading = ref(true)
-const subscriptionValid = ref(false)
-const isMobile = ref(/android|iPad|iPhone|iPod/i.test(navigator.userAgent || navigator.vendor))
-
-// API configuration (fallback)
-const API_URL =
-  import.meta.env.MODE === 'development' ? 'http://localhost:3000' : 'https://api.babynounu.com'
-
-const BASE_URL =
-  import.meta.env.MODE === 'development'
-    ? 'http://localhost:8081'
-    : 'https://baby-provider.djoumaf.net'
-
-// Timers
-let pollTimer: ReturnType<typeof setInterval> | null = null
-let fallbackTimer: ReturnType<typeof setTimeout> | null = null
-let timeoutTimer: ReturnType<typeof setTimeout> | null = null
-
-// Socket event handler
-const onPaymentStatus = (data: PaymentStatusPayload) => {
-  console.log('[HomeView] paymentStatus received:', data)
-
-  if (data.isPayment && data.hasActiveSubscription) {
-    subscriptionValid.value = true
-    showSuccessNotification.value = true
-    isLoading.value = false
-    cleanupTimers()
-    openBabyNounuApp()
-  } else if (data.status === 'Failed' || data.status === 'Cancelled' || data.status === 'not_found') {
-    errorMessage.value = data.status === 'not_found'
-      ? 'Transaction introuvable.'
-      : "Le paiement n'a pas pu être validé."
-    showErrorNotification.value = true
-    isLoading.value = false
-    cleanupTimers()
-  }
-  // For 'Pending' status, keep loading
-}
-
-const cleanupTimers = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
-  if (fallbackTimer) {
-    clearTimeout(fallbackTimer)
-    fallbackTimer = null
-  }
-  if (timeoutTimer) {
-    clearTimeout(timeoutTimer)
-    timeoutTimer = null
-  }
-}
-
-// Lifecycle hook
-onMounted(async () => {
-  const userId = route.query.userId as string
-  const transactionId = route.query.transactionId as string
-
-  if (!userId || !transactionId) {
-    errorMessage.value = 'Paramètres manquants (userId, transactionId).'
-    showErrorNotification.value = true
-    isLoading.value = false
-    return
-  }
-
-  localStorage.clear()
-  localStorage.setItem('userId', userId)
-  localStorage.setItem('transactionId', transactionId)
-
-  // 1. Connect socket for real-time validation
-  paymentSocketService.connect(userId, transactionId)
-  paymentSocketService.on('paymentStatus', onPaymentStatus)
-
-  // 2. Request immediate status check via socket
-  paymentSocketService.emit('checkPaymentStatus', { userId, transactionId })
-
-  // 3. Poll via socket every 5 seconds (in case webhook hasn't arrived yet)
-  pollTimer = setInterval(() => {
-    paymentSocketService.emit('checkPaymentStatus', { userId, transactionId })
-  }, 5000)
-
-  // 4. HTTP fallback after 10 seconds (in case socket fails entirely)
-  fallbackTimer = setTimeout(async () => {
-    if (isLoading.value) {
-      console.log('[HomeView] Socket fallback: trying HTTP verification')
-      try {
-        const response = await fetch(`${API_URL}/payments/status/${transactionId}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        })
-
-        if (response.ok) {
-          const data: any = await response.json()
-          if (data?.status === 'Success') {
-            subscriptionValid.value = true
-            showSuccessNotification.value = true
-            isLoading.value = false
-            cleanupTimers()
-            await openBabyNounuApp()
-          }
-        }
-      } catch (error) {
-        console.error('[HomeView] HTTP fallback error:', error)
-      }
-    }
-  }, 10000)
-
-  // 5. Global timeout after 60 seconds
-  timeoutTimer = setTimeout(() => {
-    if (isLoading.value) {
-      errorMessage.value = "Délai d'attente dépassé. Veuillez réessayer."
-      showErrorNotification.value = true
-      isLoading.value = false
-      cleanupTimers()
-    }
-  }, 60000)
+const {
+  state,
+  errorMessage,
+  isOpeningApp,
+  showNotification,
+  notificationType,
+  tryOpenAppAgain,
+  closeNotification,
+  retryPayment,
+} = usePaymentValidation({
+  onSuccess: () => {
+    // Auto-open app on success (mobile only, handled inside composable)
+  },
 })
-
-onUnmounted(() => {
-  cleanupTimers()
-  paymentSocketService.off('paymentStatus', onPaymentStatus)
-  paymentSocketService.disconnect()
-})
-
-// Methods
-const openBabyNounuApp = async (): Promise<void> => {
-  if (!isMobile.value) return
-
-  const userAgent = navigator.userAgent || navigator.vendor
-  const linkElement = document.getElementById('openApp')
-
-  if (linkElement) {
-    isOpeningApp.value = true
-
-    if (/android/i.test(userAgent)) {
-      linkOpenApp.value = 'intent://home#Intent;scheme=babynounu;package=com.babyNounu.starter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.babyNounu.starter;end;'
-    } else if (/iPad|iPhone|iPod/i.test(userAgent)) {
-      linkOpenApp.value = 'babynounu://home'
-    } else {
-      linkOpenApp.value = 'https://play.google.com/store/apps/details?id=com.babyNounu.starter'
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    linkElement.click()
-
-    setTimeout(() => {
-      if (/android/i.test(userAgent)) {
-        window.location.href = 'https://play.google.com/store/apps/details?id=com.babyNounu.starter'
-      } else if (/iPad|iPhone|iPod/i.test(userAgent)) {
-        window.location.href = 'https://apps.apple.com/app/babynounu'
-      }
-    }, 3000)
-
-    setTimeout(() => {
-      isOpeningApp.value = false
-    }, 4000)
-  }
-}
-
-const tryOpenAppAgain = async () => {
-  if (isMobile.value) {
-    await openBabyNounuApp()
-  } else {
-    window.open('https://play.google.com/store/apps/details?id=com.babyNounu.starter', '_blank')
-  }
-}
-
-const closeNotification = (): void => {
-  showSuccessNotification.value = false
-  showErrorNotification.value = false
-}
-
-const retryPayment = (): void => {
-  window.location.href = `${BASE_URL}/?userId=${route.query.userId}&transactionId=${route.query.transactionId}`
-}
 </script>
-
-<style>
-* {
-  font-family: 'Figtree';
-}
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>
