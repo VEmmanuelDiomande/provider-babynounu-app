@@ -19,13 +19,8 @@ export function usePaymentValidation(options: UsePaymentValidationOptions = {}) 
 
   const isMobile = /android|iPad|iPhone|iPod/i.test(navigator.userAgent || navigator.vendor)
 
-  const API_URL =
-    import.meta.env.MODE === 'development' ? 'http://localhost:3000' : 'https://baby.djoumaf.net'
-
-  const BASE_URL =
-    import.meta.env.MODE === 'development'
-      ? 'http://localhost:8084'
-      : 'https://baby-provider.djoumaf.net'
+  const API_URL = import.meta.env.VITE_API_URL
+  const BASE_URL = import.meta.env.VITE_BASE_URL
 
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let fallbackTimer: ReturnType<typeof setTimeout> | null = null
