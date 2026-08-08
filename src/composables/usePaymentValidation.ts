@@ -122,13 +122,26 @@ export function usePaymentValidation(options: UsePaymentValidationOptions = {}) 
   }
 
   const retryPayment = () => {
-    const txId = route.query.transactionId || route.query.transaction_id
-    window.location.href = `${BASE_URL}/?userId=${route.query.userId || ''}&transactionId=${txId}`
+    // Lit les params avec rétrocompatibilité (bn_tx = nouveau, transaction_id/transactionId = ancien)
+    const txId = route.query.bn_tx || route.query.transactionId || route.query.transaction_id
+    const uid = route.query.bn_uid || route.query.userId
+    window.location.href = `${BASE_URL}/?bn_tx=${txId || ''}&bn_uid=${uid || ''}`
   }
 
   onMounted(async () => {
-    const userId = route.query.userId as string
-    const transactionId = (route.query.transactionId || route.query.transaction_id) as string
+    // Lit les params avec rétrocompatibilité :
+    // - bn_tx / bn_uid : nouveaux noms préfixés (évitent les conflits avec GeniusPay)
+    // - transaction_id / transactionId / userId : anciens noms (paiements en cours)
+    const userId = (route.query.bn_uid || route.query.userId) as string
+    const transactionId = (route.query.bn_tx || route.query.transactionId || route.query.transaction_id) as string
+    const errorStatus = route.query.bn_status || route.query.status
+
+    // Si on arrive via l'errorUrl (bn_status=error), afficher directement l'erreur
+    if (errorStatus === 'error' && transactionId) {
+      // On vérifie quand même le statut réel au cas où GeniusPay aurait mal signalé l'échec
+      // mais on précharge l'état d'erreur pour un feedback rapide
+      errorMessage.value = "Le paiement n'a pas pu être validé."
+    }
 
     if (!transactionId) {
       errorMessage.value = 'Paramètres manquants (transactionId).'
@@ -153,19 +166,35 @@ export function usePaymentValidation(options: UsePaymentValidationOptions = {}) 
     fallbackTimer = setTimeout(async () => {
       if (state.value === 'loading') {
         try {
-          const response = await fetch(`${API_URL}/payments/status/${transactionId}`, {
+          // Utilise l'endpoint public (sans JWT) car le provider-app n'a pas
+          // le token de l'utilisateur (l'utilisateur arrive via redirect GeniusPay).
+          const response = await fetch(`${API_URL}/payments/public-status/${transactionId}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
           })
 
           if (response.ok) {
-            const data: any = await response.json()
-            if (data?.status === 'Success') {
+            const res: any = await response.json()
+            const data = res?.data || res
+            if (data?.status === 'Success' || (data?.hasActiveSubscription)) {
               state.value = 'success'
               notificationType.value = 'success'
               showNotification.value = true
               cleanupTimers()
               await openBabyNounuApp()
+            } else if (
+              data?.status === 'Failed' ||
+              data?.status === 'Cancelled' ||
+              data?.status === 'not_found'
+            ) {
+              errorMessage.value =
+                data?.status === 'not_found'
+                  ? 'Transaction introuvable.'
+                  : "Le paiement n'a pas pu être validé."
+              state.value = 'error'
+              notificationType.value = 'error'
+              showNotification.value = true
+              cleanupTimers()
             }
           }
         } catch (error) {
